@@ -1,0 +1,212 @@
+---
+title: "Dnmt1_DMRs_DEGs"
+author: "Juan"
+date: "2025-02-07"
+output: html_document
+---
+#load the libraies
+```{r}
+library(readr)
+library(ChIPseeker)
+library(TxDb.Mmusculus.UCSC.mm10.knownGene)  # Mouse genome annotations
+library(org.Mm.eg.db)  # Mouse gene database
+library(GenomicRanges)  # Handle genomic coordinates
+library(dplyr)
+library(ggplot2)
+```
+#import files and annotate the DMRs
+```{r}
+# Convert to GRanges object
+peak_gr <- makeGRangesFromDataFrame(putative_DMRs_with_FWER, seqnames.field = "chr", 
+                                    start.field = "start", end.field = "end")
+
+txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene #give knowgene list to txdb
+```
+```{r}
+# Define function for annotation
+anno_function <- function(granges_obj) { 
+  cuttag_anno <- annotatePeak(granges_obj, TxDb = txdb, annoDb = "org.Mm.eg.db")
+  anno_df <- as.data.frame(cuttag_anno)
+  plotAnnoPie(cuttag_anno)  # Plot pie chart of annotation
+  return(anno_df)
+}
+#input to anno_function
+Allpaired_Dnmt1_anno <- anno_function(peak_gr)
+```
+
+```{r}
+write_csv(Allpaired_Dnmt1_anno, file="All_Dnmt1_anno.csv")
+```
+```{r}
+names(Allpaired_Dnmt1_anno)[1] <- "chr"
+```
+#merge two datasets while keeping only one set of chr, start, and end columns and including all other different columns.
+#by = c("chr", "start", "end") → Ensures merging is done based on common genomic coordinates.
+#all = TRUE → Keeps all rows from both datasets (full outer join).
+#Different columns are automatically included in the merged dataset
+```{r}
+Dnmt1_anno_allinfor <- merge(Allpaired_Dnmt1_anno, putative_DMRs_with_FWER, by = c("chr", "start", "end"), all = TRUE)
+```
+
+#overlap with DEGS
+```{r}
+names(Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)[1] <- "genes"
+```
+
+```{r}
+all_Dnmt1_DMRs_DEGs <- inner_join(All_Dnmt1_anno_allinfor,Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005, by = c("SYMBOL" = "genes"))
+```
+#check the distribution of DEGs associated DMRs
+```{r}
+# Convert to GRanges object
+peak_gr2 <- makeGRangesFromDataFrame(all_Dnmt1_DMRs_DEGs, seqnames.field = "chr", 
+                                    start.field = "start", end.field = "end")
+#input to anno_function
+anno_function(peak_gr2)
+```
+
+#check the unique genes
+```{r}
+All_unique_Dnmt1_DMRs_DEGs <- all_Dnmt1_DMRs_DEGs %>% distinct(SYMBOL, .keep_all = TRUE)
+```
+```{r}
+names(Dnmt1_log2_CPM_normalized_values)[1] <- "SYMBOL"
+All_unique_Dnmt1_DMRs_DEGs <- inner_join(Dnmt1_log2_CPM_normalized_values, All_unique_Dnmt1_DMRs_DEGs, by = "SYMBOL")
+```
+
+```{r}
+write.csv(All_unique_Dnmt1_DMRs_DEGs, file ="All_unique_Dnmt1_DMRs_DEGs.csv")
+```
+
+
+#write chr, start and end into bed for motif analysis
+```{r}
+all_Dnmt1_overlap_coordinates <- all_Dnmt1_DMRs_DEGs[, c("chr","start", "end")]
+```
+
+```{r}
+# Specify BED file path
+bed_file <- "all_D_overlap.bed"
+
+# Save as BED format (tab-separated without headers)
+write.table(all_Dnmt1_overlap_coordinates, file = bed_file, quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+# Confirm file saved
+cat("BED file saved at:", bed_file) # ready to upload to MEME suit and use AME to perform enrichment analysis
+```
+#Filter rows based on the condition for the FC column (e.g., FC >1) then perfrom enrichment analysis#
+```{r}
+all_Dnmt1_overlap_coordinates_filterFCover1 <- all_Dnmt1_DMRs_DEGs[all_Dnmt1_DMRs_DEGs$log2FoldChange > 1, c("chr","start", "end")]
+```
+
+```{r}
+# Specify BED file path
+bed_file2 <- "all_D_overlap_filter.bed"
+
+# Save as BED format (tab-separated without headers)
+write.table(all_Dnmt1_overlap_coordinates_filterFCover1, file = bed_file2, quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+# Confirm file saved
+cat("BED file saved at:", bed_file) # ready to upload to MEME suit and use AME to perform enrichment analysis
+```
+#overlap gene list
+
+```{r}
+# Read tab-separated .txt.gz file
+list1 <- read.table("WT vs Perturbation.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+```
+```{r}
+list2 <- Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005
+```
+
+```{r}
+Dnmt1_KO_upregulated <- list2[list2$log2FoldChange > 0, ]
+```
+```{r}
+Erg1_KO <- list1[list1$adj.P.Val < 0.05, ]
+```
+```{r}
+Egr1_KO_downregulated <- Erg1_KO[Erg1_KO$logFC < 0, ]
+```
+```{r}
+names(Egr1_KO_downregulated)[1] <- "genes"
+```
+```{r}
+library(tools)
+Egr1_targets1_ChEA$genes <- toTitleCase(Egr1_targets1_ChEA$genes)
+```
+
+
+```{r}
+Egr1_all_targets <- merge(Egr1_KO_downregulated, Egr1_targets1_ChEA, by = "genes", all = FALSE)
+```
+#
+If you know:
+overlap_count = 134 (overlapping genes)
+only_in_genes1_count = 379 (genes unique to dataset1)
+only_in_genes2_count = 4845 (genes unique to dataset2)
+background_count = 25716 - (23 + 3514 + 53)= 20458 (remaining genes in genome)
+#
+
+```{r}
+# Perform Fisher's Exact Test
+fisher.test(matrix(c(134, 379, 4845, 20458), nrow = 2))
+```
+# not significant 
+```{r}
+# Perform Fisher's Exact Test 22000 as total
+fisher.test(matrix(c(134, 379, 4845, 16642), nrow = 2))
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#direct overlap Dnmt1-KOs downregulated and Egr1_upregulated
+```{r}
+Dnmt1_up_vs_Egr1_down <- merge(Dnmt1_KO_upregulated, Egr1_KO_downregulated, by = "genes" ,all = FALSE )
+```
+If you know:
+overlap_count = 524 (overlapping genes)
+only_in_genes1_count = 1195 (genes unique to dataset1)
+only_in_genes2_count = 4455 (genes unique to dataset2)
+background_count = 22000 - (524 + 1195 + 4455)= 15826 (remaining genes in genome)
+#
+```{r}
+# Perform Fisher's Exact Test
+fisher.test(matrix(c(524, 1195, 4455, 15826), nrow = 2))
+```
+```{r}
+write.csv(Dnmt1_KO_upregulated, file = "Dnmt1_KO_upregulated.csv")
+write.csv(Egr1_KO_downregulated, file = "Egr1_KO_downregulated.csv")
+write.csv(Dnmt1_up_vs_Egr1_down, file = "Dnmt1_up_vs_Egr1_down.csv")
+
+```
+```{r}
+write.csv(all_Dnmt1_DMRs_DEGs, file = "all_Dnmt1_DMRs_DEGs_anno.csv")
+```
+```{r}
+names(list1)[1] <- "SYMBOL"
+all_Dnmt1_DMRs_DEGs_Egr1 <- inner_join(all_Dnmt1_DMRs_DEGs,list1, by ="SYMBOL")
+```
+```{r}
+write.csv(all_Dnmt1_DMRs_DEGs_Egr1, file = "all_Dnmt1_DMRs_DEGs_Egr1_anno.csv")
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
