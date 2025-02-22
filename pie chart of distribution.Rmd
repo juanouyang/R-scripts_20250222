@@ -1,0 +1,87 @@
+---
+title: "Venn diagram"
+author: "Juan"
+date: "2025-02-21"
+output: html_document
+---
+```{r}
+# Load required libraries
+library(ggplot2)
+
+# Create a dataframe with categories and percentages
+dmr_data <- data.frame(
+  Category = c("Promoter", "UTR", "Exon", "Intron", "Distal Intergenic"),
+  Percentage = c(20.41, 1.93, 5.88, 37.05, 34.6)
+)
+
+# Define custom colors
+colors <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#D55E00") # Colorblind-friendly palette
+
+# Create a pie chart
+ggplot(dmr_data, aes(x = "", y = Percentage, fill = Category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = colors) +
+  theme_void() +
+  labs(title = "DMR Annotation Distribution") +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), 
+            position = position_stack(vjust = 0.5), color = "white", size = 5)
+
+
+```
+```{r}
+
+# Create a dataframe with categories and percentages
+dmr_data <- data.frame(
+  Category = c("Promoter", "UTR", "Exon", "Intron", "Distal Intergenic"),
+  Percentage = c(20.41, 1.93, 5.88, 37.05, 34.6)
+)
+
+# Create category labels with percentages
+dmr_data$Label <- paste0(dmr_data$Category, " (", round(dmr_data$Percentage, 1), "%)")
+
+# Define custom colors (colorblind-friendly)
+colors <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#D55E00")
+
+# Open a PDF device to save the plot
+pdf("DMR_Annotation_Distribution.pdf", width = 7, height = 5) 
+
+# Create the pie chart
+ggplot(dmr_data, aes(x = "", y = Percentage, fill = Label)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +  # Convert bar chart into pie chart
+  scale_fill_manual(values = colors) +  # Apply custom colors
+  theme_void() +  # Remove axis and grid for a clean pie chart
+  labs(title = "DMR Annotation Distribution", fill = "Category") +  # Add title & legend label
+  theme(legend.title = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 10))  # Adjust legend text size
+
+# Close the PDF device
+dev.off()
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
