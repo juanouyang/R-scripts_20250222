@@ -1,0 +1,244 @@
+---
+title: "Juan"
+author: "Juan"
+date: "2025-02-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Step1: overlap mouse TF with Dnmt1DEGs
+#import datasets
+```{r}
+#read txt. file
+list1 <- read.table("Mus_musculus_TF.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+```
+```{r}
+#read txt. file
+Dnmt1_DMR_TF <- read.table("All_Dnmt1_3009_motif enrichment.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+```
+
+```{r}
+names(Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)[1] <- "Symbol"
+```
+#overlap all TF with DEGs
+```{r}
+library(dplyr)
+TF_Dnmt1KOS_DEGS <- inner_join(Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005, list1, by = "Symbol")
+```
+```{r}
+TF_notin_Dnmt1_DEGs <- setdiff(list1$Symbol, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005$Symbol)
+head(TF_notin_Dnmt1_DEGs)
+```
+```{r}
+TF_notin_Dnmt1_DEGs <- anti_join(list1, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005, by = "Symbol")
+```
+#overlap TF not_in and in Dnmt1KOs DEGS with Dnmt1_DMR_TF
+```{r}
+names(Dnmt1_DMR_TF)[4] <- "Symbol"
+```
+
+#not in
+```{r}
+TF_Dnmt1KOS_DEGS <- TF_Dnmt1KOS_DEGS %>% mutate(TFS = toupper(Symbol) )
+```
+```{r}
+TF_notin_Dnmt1_DEGs <- TF_notin_Dnmt1_DEGs %>% mutate(TFS = toupper(Symbol) )
+```
+```{r}
+Dnmt1_DMR_TF <- Dnmt1_DMR_TF %>% mutate(TFS = toupper(motif_alt_ID))
+```
+
+```{r}
+primary_TF_not_in_DEGs <- inner_join(TF_notin_Dnmt1_DEGs, Dnmt1_DMR_TF, by = "TFS")
+```
+
+```{r}
+Primary_TF_in_DEGS <- inner_join(TF_Dnmt1KOS_DEGS, Dnmt1_DMR_TF,  by = "TFS")
+```
+```{r}
+names(Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005)[1] <- "Symbol"
+```
+
+```{r}
+primary_TF_not_inDEGS_Dnmt1_but_in_Kmt2a <- primary_TF_not_in_DEGs_both_DK
+```
+
+```{r}
+primary_TF_not_in_DEGs_both_DK <- anti_join(primary_TF_not_in_DEGs, Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005, by = "Symbol")
+```
+#overlap primary_TF_not_in_DEGs_both_DK with MAX targets
+```{r}
+MAX_targets <- read.table("MAX_MA0058.1_genes.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+```
+```{r}
+MAX_targets_original <- MAX_targets
+```
+
+```{r}
+# Remove rows where "Symbol" is empty or missing (NA)
+filtered_dataset <- MAX_targets %>% filter(!is.na(Synonyms) & Synonyms != "")
+# Keep only unique gene names
+unique_genes <- filtered_dataset %>% distinct(Synonyms, .keep_all = TRUE)
+```
+```{r}
+MAX_targets_unique <- unique_genes 
+```
+```{r}
+names(MAX_targets_unique)[2] <- "Symbol"
+```
+#convert gene symbol toupper
+```{r}
+Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005<- Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005 %>% mutate(genes = toupper(Symbol) )
+```
+```{r}
+MAX_targets_unique <- MAX_targets_unique %>% mutate(genes = toupper(Symbol))
+```
+```{r}
+Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005<- Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005 %>% mutate(genes = toupper(Symbol) )
+```
+
+```{r}
+library(GeneOverlap)
+
+olap <- function(TF_targets, DEGs){
+    olap1 <- newGeneOverlap(TF_targets$genes,DEGs$genes, spec =c("mm9.gene"))
+    olap1 <- testGeneOverlap(olap1)
+    print(olap1)
+    
+    }
+
+```
+```{r}
+olap(MAX_targets_unique, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)
+```
+```{r}
+olap(MAX_targets_unique, Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005)
+```
+#try another MAX_MYC
+```{r}
+MAXMYC_targets <- read.table("MYC_MAX_MA0059.1_genes.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+```
+
+```{r}
+library(dplyr)
+# Remove rows where "Symbol" is empty or missing (NA)
+filtered_dataset1 <- MAXMYC_targets %>% filter(!is.na(Synonyms) & Synonyms != "")
+# Keep only unique gene names
+MAXMYC_targets_unique <- filtered_dataset1 %>% distinct(Synonyms, .keep_all = TRUE)
+names(MAXMYC_targets_unique)[2] <- "Symbol"
+MAXMYC_targets_unique <- MAXMYC_targets_unique %>% mutate(genes = toupper(Symbol))
+```
+
+```{r}
+
+olap_MAXMYC_Dnmt1 <- olap(MAXMYC_targets_unique, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)
+```
+```{r}
+olap_MAXMYC_Kmt2a <- olap(MAXMYC_targets_unique, Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005)
+```
+```{r}
+names(MAXMYC_targets_unique)[2] <- "genes"
+```
+
+```{r}
+olap2 <- function(TF_targets, DEGs){
+    olap1 <- newGeneOverlap(TF_targets$genes,DEGs$genes, spec =c("mm9.gene"))
+    olap1 <- testGeneOverlap(olap1)
+    print(olap1)
+    overlapping_genes <- TF_targets[TF_targets$genes %in% DEGs$genes,]
+    overlapping_genes$DEGs_adj_pval <- DEGs$padj[base::match(overlapping_genes$genes,DEGs$genes)]
+    overlapping_genes$DEGs_log2fc <-  DEGs$log2FoldChange[base::match(overlapping_genes$genes,DEGs$genes)]
+    return(overlapping_genes)
+}
+
+```
+```{r}
+olap_MAXMYC_Dnmt1 <- olap2(MAXMYC_targets_unique, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)
+olap_MAXMYC_Kmt2a <- olap2(MAXMYC_targets_unique, Differential_expressed_genes_in_Kmt2a_with_padj_less_than_005)
+```
+
+```{r}
+names(olap_MAXMYC_Dnmt1)[8] <- "gene"
+names(olap_MAXMYC_Kmt2a)[8] <- "gene"
+MAXMYC_Dnmt1_Kmt2a_olap <- inner_join(olap_MAXMYC_Dnmt1, olap_MAXMYC_Kmt2a, by = "gene")
+```
+```{r}
+write.csv(MAXMYC_Dnmt1_Kmt2a_olap, file = "MAXMYC_Dnmt1_Kmt2a_olap.csv")
+```
+
+```{r}
+olap_primaryTF_DMRs_Dnmt1 <- inner_join(MAXMYC_Dnmt1_Kmt2a_olap, all_unique_Dnmt1_DMRs_DEGs_joy, by = "gene")
+```
+
+```{r}
+all2v4_Kmt2a_DMRs_DEGs_unique <- all2v4_Kmt2a_DMRs_DEGs %>% distinct(gene, .keep_all = TRUE)
+all3v3_Kmt2a_DMRs_DEGs_unique <- all3v3_Kmt2a_DMRs_DEGs %>% distinct(gene, .keep_all = TRUE)
+```
+
+```{r}
+olap_primaryTF_DMRs_Kmt2a <- inner_join(MAXMYC_Dnmt1_Kmt2a_olap, all3v3_Kmt2a_DMRs_DEGs_unique, by = "gene")
+```
+```{r}
+olap_primaryTF_DMRs_Kmt2a2v4 <- inner_join(MAXMYC_Dnmt1_Kmt2a_olap, all2v4_Kmt2a_DMRs_DEGs_unique, by = "gene")
+```
+```{r}
+olap_primaryTF_allDMRs_Kmt2a3v3 <- inner_join(MAXMYC_Dnmt1_Kmt2a_olap, Allpaired3v3_Kmt2a_anno_allinfor, by = "gene")
+```
+
+```{r}
+DEGs_DMRs_Dnmt1_Kmt2a_olap <- inner_join(all2v4_Kmt2a_DMRs_DEGs_unique, all_unique_Dnmt1_DMRs_DEGs_joy, by = "gene")
+```
+```{r}
+library(dplyr)
+names(Dnmt1_DMR_TF)[18] <- "genes"
+Dnmt1_DMR_TF_DEG <- inner_join(Dnmt1_DMR_TF, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005, by = "genes")
+
+```
+#overlap with Egr1 targets
+```{r}
+#read txt. file
+library(readr)
+Egr1_target <- read.table("Egr1_MA0162.1_genes.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+```
+
+#not in
+```{r}
+Egr1_target <- Egr1_target %>% mutate(genes = toupper(Synonyms) )
+```
+```{r}
+Egr1_target_unique <- Egr1_target %>% distinct(Synonyms, .keep_all = TRUE)
+```
+```{r}
+
+olap(Egr1_target_unique, Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005)
+```
+```{r}
+write.csv(Egr1_target_unique, file = "Egr1_target_unique_MA0162_1.csv")
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

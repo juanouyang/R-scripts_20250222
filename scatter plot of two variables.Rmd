@@ -1,0 +1,88 @@
+---
+title: "enriched motif"
+author: "Juan"
+date: "2025-02-21"
+output: html_document
+---
+```{r}
+
+# Add a new column with -log10(adj_p.value)
+Dnmt1_DMR_TF$neg_log10_padj <- -log10(Dnmt1_DMR_TF$adj_p.value)
+```
+```{r}
+#load library
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+```
+
+
+```{r}
+# define a combine score
+Dnmt1_DMR_TF <- Dnmt1_DMR_TF %>%
+mutate(Combined.Score = neg_log10_padj * X.TP)
+```
+
+```{r}
+# Select top 10 motifs based on combined score
+top10 <- Dnmt1_DMR_TF %>%
+  arrange(desc(Combined.Score))
+head(10)
+```
+```{r}
+top10 <- Dnmt1_DMR_TF[order(-Dnmt1_DMR_TF$Combined.Score), ][1:10, ]
+```
+
+```{r}
+# Plot
+ggplot(Dnmt1_DMR_TF, aes(x = X.TP, y = neg_log10_padj, color = Combined.Score)) +
+  geom_point(size = 4, alpha = 0.8) +  # Scatter points
+  scale_color_gradient(low = "gray80", high = "purple3") +
+  labs(
+    title = "Motif Analysis of Dnmt1KO DMRs",
+    color = "Combined Score",
+    x = "Enrichment (%)",
+    y = "-log10(adj.p-value)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 1),
+    axis.ticks = element_line(color = "black", linewidth = 1),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black"),
+    plot.title = element_text(hjust = 0.5, size = 16)
+  ) +
+  # Add labels to the top 10 points
+  geom_text_repel(data = top10, aes(label = genes),
+                  size = 5, color = "black",
+                  max.overlaps = Inf, box.padding = 0.5)
+
+# Save the plot
+ggsave("scatter_plot.pdf", width = 8, height = 5, dpi = 300, device = "pdf")
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

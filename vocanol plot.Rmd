@@ -1,0 +1,163 @@
+---
+title: "vocanol plot"
+author: "Juan"
+date: "2025-02-21"
+output: html_document
+---
+#load library
+```{r}
+# Load required libraries
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+```
+```{r}
+# Custom list of genes to label (Replace with your list)
+genes_to_label <- Dnmt1_DMR_TF_DEG$Symbol
+
+```
+```{r}
+# Compute -log10(padj)
+Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005 <- Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005 %>%
+  mutate(neg_log10_padj = -log10(padj),  
+    highlight = ifelse(Symbol %in% genes_to_label, "Highlighted", "Other"),  # Mark highlighted genes
+    label_gene = ifelse(Gene %in% genes_to_highlight, Gene, NA)  # Label only selected genes
+  )
+
+```
+#using ggplot
+```{r}
+# Volcano Plot
+volcano_plot <- ggplot(Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005, aes(x = log2FoldChange, y = neg_log10_padj, color = significance)) +
+  geom_point(aes(size = significance), alpha = 0.8) +  
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "gray70")) +
+  scale_size_manual(values = c("Significant" = 3, "Not Significant" = 2)) +
+  labs(
+    title = "Enhanced Volcano Plot",
+    x = "log2 Fold Change",
+    y = "-log10(adjusted p-value)",
+    color = "Significance"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black", linewidth = 0.5),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black"),
+    plot.title = element_text(hjust = 0.5, size = 16)
+  ) +
+  geom_text_repel(aes(label = label_gene), 
+                  size = 5, color = "black", 
+                  max.overlaps = Inf, box.padding = 0.5)
+# Add gene labels for selected genes
+  geom_text_repel(
+    aes(label = label_gene),
+    size = 5, color = "black", 
+    box.padding = 0.5, point.padding = 0.3,
+    max.overlaps = Inf, force = 2
+  )
+  
+  
+
+# Save as PDF
+ggsave("volcano_plot.pdf", volcano_plot, width = 7, height = 5, dpi = 300, device = "pdf")
+```
+#using enhancedvolcano library
+```{r}
+BiocManager::install("EnhancedVolcano", ask = FALSE, update = FALSE)
+```
+
+```{r}
+library(EnhancedVolcano)
+```
+```{r}
+EnhancedVolcano_plot <- EnhancedVolcano(
+  Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005,
+  lab = Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005$genes,  # Labels for genes
+  x = "log2FoldChange",  # X-axis: log2FoldChange
+  y = "padj",  # Y-axis: p-value (adjusted)
+   xlim = c(-2, 4),  # Set x-axis limits from -2 to 6
+
+  pCutoff = 5e-2,  # Significance threshold
+  FCcutoff = 0.5,  # log2FC threshold
+  pointSize = 2.0,  # Size of data points
+  labSize = 3.5,  # Size of gene labels
+  colAlpha = 0.75,  # Transparency of points
+  title = "Enhanced Volcano Plot",
+  subtitle = "Differentially Expressed Genes",
+  caption = "log2FC vs. Adjusted P-value",
+  legendLabels = c("NS", "Log2FC", "padj", "Both"),
+  legendPosition = "right",
+  gridlines.major = TRUE,
+  gridlines.minor = FALSE,
+  selectLab = c("EGR1", 
+  "TFAP4", 
+  "	ZBTB12", 
+  "	HSF1", 
+  "SP9",
+  "KLF4",
+  "KLF5"),  # Only label these genes
+  drawConnectors = TRUE,  # Add arrows connecting points to labels
+  widthConnectors = 0.5,  # Adjust thickness of arrows
+  colConnectors = "black",  # Color of the arrows
+ 
+)
+
+# Save as PDF
+ggsave("EnhancedVolcano.pdf",plot = EnhancedVolcano_plot, width = 8, height = 6, dpi = 300)
+
+```
+#got from Kaan
+```{r}
+EnhancedVolcano(Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005,
+                lab = Differential_expressed_genes_in_Dnmt1_with_padj_less_than_005$genes,
+                x = 'log2FoldChange',
+                y = 'padj',
+                ylab = bquote(~ -Log[10]~ 'adj pvalue'),
+                title = "Dnmt1 DEGs", 
+                FCcutoff = 1,
+                pCutoff = 5e-2, # padj < 0.05
+                col = c("#808080", "#d95f02", "#cab2d6", "#7570b3"),
+                colAlpha = 2,
+                drawConnectors = TRUE,
+                widthConnectors = 0.5,
+                colConnectors = 'red',
+                labSize = 6.0,
+                labCol = 'black',
+                labFace = 'bold',
+                boxedLabels = TRUE,
+                selectLab = c("Ksr1",
+                              "Gnas",
+                              "Smc4",
+                              "Stn1",
+                              "Sh3pxd2a",
+                              "Pcbp1",
+                              "Trim59",
+                              "Armcx6"))
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
